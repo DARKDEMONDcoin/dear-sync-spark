@@ -25,6 +25,14 @@ export type EmployeeTurnResult = {
   messageId: string;
   createdTaskId: string | null;
   needsConnection: { provider: string; reason: string } | null;
+  /** إجراء حقيقي جهّزه الموظف على تكامله المربوط، ينتظر اعتماد المالك. */
+  action?: {
+    id: string;
+    provider: string;
+    label: string;
+    inputs: { name: string; label: string; required?: boolean }[];
+    values: Record<string, string>;
+  } | null;
   imageUrl: string | null;
   siteSuggestions: { url: string; alt: string; pageUrl: string }[];
 };

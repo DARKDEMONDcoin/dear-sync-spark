@@ -97,14 +97,15 @@ export type ResearchOpts = {
 function openSourcesFor(
   employeeId: string,
   topic: string,
-  ctx: { industry: string; city: string; country: string; year: number },
+  ctx: { industry: string; city: string; country: string; year: number; bridged?: string },
 ): (() => Promise<Finding[]>)[] {
   const q = [topic, ctx.industry].filter(Boolean).join(" ").trim();
   /**
    * المصادر العالمية فهارسها إنجليزية: نسألها بالإنجليزية أو لا نسألها إطلاقاً.
    * استعلام عربي هناك لا يعيد فراغاً بل يعيد نتائج عشوائية تبدو كأدلة — وهذا أسوأ.
+   * المقابل يأتي من معجمنا، وإلا فمن ترجمة ويكيبيديا الموثّقة، وإلا فالصمت.
    */
-  const en = latinQuery(`${topic} ${ctx.industry}`);
+  const en = latinQuery(`${topic} ${ctx.industry}`) || (ctx.bridged ?? "");
   const noEn: () => Promise<Finding[]> = () => Promise.resolve([]);
   const en1 = (fn: (q: string) => Promise<Finding[]>) => (en ? () => fn(en) : noEn);
 

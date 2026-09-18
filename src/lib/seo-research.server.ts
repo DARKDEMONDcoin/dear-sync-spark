@@ -32,10 +32,9 @@ const strip = (html: string) =>
 export async function googleSuggest(query: string, hl = "ar", gl = "sa"): Promise<string[]> {
   try {
     const url = `https://suggestqueries.google.com/complete/search?client=firefox&hl=${hl}&gl=${gl}&q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, { headers: { "User-Agent": UA }, signal: timeout(8000) });
-    if (!res.ok) return [];
-    const data = (await res.json()) as [string, string[]];
-    return (data[1] ?? []).slice(0, 12);
+    const { safeJson } = await import("./research-safety.server");
+    const data = await safeJson<[string, string[]]>(url, { ms: 8000, cacheTtlMs: 60 * 60_000 });
+    return (data?.[1] ?? []).slice(0, 12);
   } catch {
     return [];
   }
@@ -45,10 +44,9 @@ export async function googleSuggest(query: string, hl = "ar", gl = "sa"): Promis
 export async function bingSuggest(query: string, market = "ar-SA"): Promise<string[]> {
   try {
     const url = `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(query)}&market=${market}`;
-    const res = await fetch(url, { headers: { "User-Agent": UA }, signal: timeout(8000) });
-    if (!res.ok) return [];
-    const data = (await res.json()) as [string, string[]];
-    return (data[1] ?? []).slice(0, 10);
+    const { safeJson } = await import("./research-safety.server");
+    const data = await safeJson<[string, string[]]>(url, { ms: 8000, cacheTtlMs: 60 * 60_000 });
+    return (data?.[1] ?? []).slice(0, 10);
   } catch {
     return [];
   }
@@ -157,22 +155,20 @@ const AGENTS = [
 ];
 let agentIndex = 0;
 
+/**
+ * كل جلب خارجي في هذا الملف يمر عبر طبقة أمان البحث: تهدئة لكل مضيف، سقف تزامن،
+ * قاطع دائرة يغلق أي محرك يرفضنا (429/403) بدل الإلحاح عليه، واحترام Retry-After.
+ * هذه هي الحماية التي تمنع الحظر الدائم لمحركات السكرابينج (Brave/Bing/Startpage…).
+ */
 async function getText(url: string, ms = 7_000): Promise<string> {
-  try {
-    const agent = AGENTS[agentIndex++ % AGENTS.length]!;
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": agent,
-        "Accept-Language": "ar,en;q=0.8",
-        Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-      },
-      signal: timeout(ms),
-    });
-    if (!res.ok) return "";
-    return await res.text();
-  } catch {
-    return "";
-  }
+  const { safeFetch } = await import("./research-safety.server");
+  const r = await safeFetch(url, {
+    ms,
+    // صفحات نتائج البحث تُخزَّن ربع ساعة: يقلّل الضغط على المحرك ويسرّع الرد.
+    cacheTtlMs: 15 * 60_000,
+    headers: { Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8" },
+  });
+  return r.ok ? r.text : "";
 }
 
 /**
@@ -713,12 +709,14 @@ export type PageAudit = {
  */
 async function readerFallback(url: string): Promise<{ title: string; text: string } | null> {
   try {
-    const res = await fetch(`https://r.jina.ai/${url}`, {
+    const { safeFetch } = await import("./research-safety.server");
+    const res = await safeFetch(`https://r.jina.ai/${url}`, {
+      ms: 25_000,
+      cacheTtlMs: 6 * 60 * 60_000,
       headers: { Accept: "text/plain, text/markdown, */*" },
-      signal: timeout(25_000),
     });
     if (!res.ok) return null;
-    const raw = await res.text();
+    const raw = res.text;
     if (!raw || raw.length < 80) return null;
 
     const title = /^Title:\s*(.+)$/m.exec(raw)?.[1]?.trim() ?? "";
@@ -755,11 +753,9 @@ export async function auditPage(url: string): Promise<PageAudit> {
   try {
     const target = new URL(url);
     if (!/^https?:$/.test(target.protocol)) return { ...empty, error: "رابط غير مدعوم" };
-    const res = await fetch(target.toString(), {
-      headers: { "User-Agent": UA, "Accept-Language": "ar,en;q=0.8" },
-      signal: timeout(15_000),
-    });
-    const html = (await res.text()).slice(0, 900_000);
+    const { safeFetch } = await import("./research-safety.server");
+    const res = await safeFetch(target.toString(), { ms: 15_000, cacheTtlMs: 60 * 60_000 });
+    const html = res.text.slice(0, 900_000);
     const pick = (re: RegExp) => strip(re.exec(html)?.[1] ?? "");
     const all = (re: RegExp, limit = 12) => {
       const out: string[] = [];
@@ -1162,21 +1158,15 @@ export type EntityProfile = {
 
 export async function entityProfile(term: string): Promise<EntityProfile | null> {
   try {
-    const search = await fetch(
+    const { safeJson } = await import("./research-safety.server");
+    const found = await safeJson<{ search?: { id?: string }[] }>(
       `https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=ar&uselang=ar&limit=1&search=${encodeURIComponent(term)}`,
-      { headers: { "User-Agent": UA }, signal: timeout(7000) },
+      { ms: 7000, agent: "bot", cacheTtlMs: 12 * 60 * 60_000 },
     );
-    if (!search.ok) return null;
-    const found = (await search.json()) as { search?: { id?: string }[] };
-    const id = found.search?.[0]?.id;
+    const id = found?.search?.[0]?.id;
     if (!id) return null;
 
-    const detail = await fetch(
-      `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&languages=ar|en&props=labels|descriptions|aliases|claims|sitelinks&ids=${id}`,
-      { headers: { "User-Agent": UA }, signal: timeout(8000) },
-    );
-    if (!detail.ok) return null;
-    const body = (await detail.json()) as {
+    const body = await safeJson<{
       entities?: Record<
         string,
         {
@@ -1187,8 +1177,11 @@ export async function entityProfile(term: string): Promise<EntityProfile | null>
           sitelinks?: Record<string, { title?: string }>;
         }
       >;
-    };
-    const e = body.entities?.[id];
+    }>(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&languages=ar|en&props=labels|descriptions|aliases|claims|sitelinks&ids=${id}`,
+      { ms: 8000, agent: "bot", cacheTtlMs: 12 * 60 * 60_000 },
+    );
+    const e = body?.entities?.[id];
     if (!e) return null;
     const site = e.claims?.["P856"]?.[0]?.mainsnak?.datavalue?.value;
     const arTitle = e.sitelinks?.["arwiki"]?.title;

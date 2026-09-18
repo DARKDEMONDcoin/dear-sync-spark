@@ -1,6 +1,11 @@
-# Roadmap
+# خارطة العمل: نظام البحث الموحّد (الأفضل عالمياً)
 
-- [ ] Audit every AI employee path for time and live-context coverage
-- [ ] Close any remaining coverage or reliability gaps
-- [ ] Validate type safety and live employee responses
-- [ ] Validate the signed-in chat experience
+## المهام
+- [x] 1. بوابة نية البحث — `src/lib/research-intent.ts` (صريح/سوق/واقع خارجي/زمني) مربوطة في `ai.functions.ts`
+- [x] 2. مصادر بحث مخصصة لكل موظف — `src/lib/employee-research.server.ts` (adam, sam, dana, eva, sonny, nour)
+- [x] 3. بحث سِراج السوشيال يعمل داخل المحادثة لا في المهارات فقط
+- [x] 4. قاعدة «معرفة عامة لا بحث لحظي» — `noResearchHonestyBlock`
+- [x] 5. طبقة أمان البحث — `src/lib/research-safety.server.ts`، وكل جلب في `seo-research.server.ts` يمر عبرها
+
+## مهام مفتوحة (بانتظار المستخدم)
+- [ ] قرار نشر مقالات ووردبريس: نور تكتب وسِراج ينشر، أم نور تنشر المقالات فقط؟

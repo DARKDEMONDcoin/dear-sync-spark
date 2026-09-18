@@ -22,7 +22,7 @@ export type SafeFetchResult = {
   text: string;
   fromCache: boolean;
   /** سبب المنع حين ok=false بلا طلب فعلي (دائرة مفتوحة، سقف يومي…). */
-  blocked?: "circuit" | "quota" | "timeout" | "error";
+  blocked?: "circuit" | "quota" | "timeout" | "error" | "robots";
 };
 
 type HostState = {
@@ -202,6 +202,11 @@ export type SafeFetchOptions = {
   maxChars?: number;
   /** تجاهل الدائرة المفتوحة (لا يُستخدم إلا لفحص صحة المضيف). */
   force?: boolean;
+  /**
+   * تخطّي فحص robots.txt. يُستخدم فقط لجلب robots.txt نفسه ولواجهات API
+   * الموثّقة التي يصرّح مزوّدها باستخدامها برمجياً (OpenAlex، Crossref، ويكيبيديا…).
+   */
+  skipRobots?: boolean;
 };
 
 const DEFAULT_TTL_MS = 30 * 60_000;
@@ -240,6 +245,23 @@ export async function safeFetch(url: string, opts: SafeFetchOptions = {}): Promi
   }
 
   const work = (async (): Promise<SafeFetchResult> => {
+    // احترام robots.txt قبل أي قراءة لصفحة موقع — لا نطرق باباً قيل لنا «لا» عنده.
+    if (!opts.skipRobots) {
+      try {
+        const { robotsDecision } = await import("./robots.server");
+        const decision = await robotsDecision(url);
+        if (!decision.allowed) {
+          return { ok: false, status: 0, text: "", fromCache: false, blocked: "robots" };
+        }
+        // Crawl-delay المعلن يتغلّب على تهدئتنا الافتراضية إن كان أطول.
+        if (decision.crawlDelayMs && decision.crawlDelayMs > (DELAY_MS[host] ?? DEFAULT_DELAY_MS)) {
+          DELAY_MS[host] = decision.crawlDelayMs;
+        }
+      } catch {
+        // تعذّر الفحص لا يوقف البحث: المعيار يعتبر غياب الملف إذناً ضمنياً.
+      }
+    }
+
     const release = await acquire(host);
     s.dayCount++;
     try {

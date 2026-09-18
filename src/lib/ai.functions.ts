@@ -476,21 +476,6 @@ export async function runEmployeeTurn(
         industry: workspace.industry,
         brand: workspace.name,
       });
-    let toolsFailed = false;
-    try {
-      const { runChatTools } = await import("./chat-tools.server");
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      toolBlocks = await runChatTools(supabaseAdmin, {
-        workspaceId: data.workspaceId,
-        employeeId: data.employeeId,
-        message: data.message,
-        website: ws.website,
-        country: ws.country,
-        connected,
-        targets: askedTargets,
-        industry: workspace.industry,
-        brand: workspace.name,
-      });
     } catch (e) {
       toolsFailed = true;
       console.warn("[chat-tools] skipped:", e instanceof Error ? e.message : e);

@@ -43,6 +43,12 @@ const HIGH_SIGNAL = /\.(gov|gov\.[a-z]{2}|edu|int)(\/|$)|\.org\//i;
  */
 const NEVER_EVIDENCE =
   /(support\.google\.com|\/help\/|\/support\/|policies\.|\/privacy|\/terms|\/login|\/signin|\/signup|\/cart|\/checkout|accounts\.google|facebook\.com\/(help|policies)|business\.help)/i;
+/**
+ * نطاقات لا تُقدَّم دليلاً في أي سياق: محتوى للبالغين، حجوزات فنادق، لوحات وظائف،
+ * متاجر مزادات. صفحاتها مليئة بالأرقام فتخدع أي مرشّح رقمي.
+ */
+const BANNED_DOMAIN =
+  /(xhamster|pornhub|xvideos|xnxx|onlyfans|booking\.com|agoda|trivago|tripadvisor\.[a-z]+\/Hotel|indeed\.com|bayt\.com|tanqeeb|wuzzuf|linkedin\.com\/jobs|ebay\.|aliexpress|amazon\.[a-z]+\/dp)/i;
 /** مصادر موسوعية: مقالها عن موضوعنا فقط إن حمل عنوانه موضوعنا. */
 const ENCYCLOPEDIC = new Set(["ويكيبيديا", "Wikidata", "Open Library"]);
 /** أقصى عدد نتائج من نطاق واحد: التنوّع جزء من جودة البحث. */

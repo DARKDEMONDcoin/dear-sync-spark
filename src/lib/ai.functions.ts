@@ -753,7 +753,14 @@ export async function runEmployeeTurn(
     const effort = effortFor(intent, data.message, longForm);
     const chatOptions = longForm
       ? { json: true, timeoutMs: 75_000, maxTokens: 6000, budgetMs: 130_000, reasoningEffort: effort }
-      : { json: true, timeoutMs: 40_000, maxTokens: 1800, budgetMs: 100_000, reasoningEffort: effort };
+      : {
+          json: true,
+          // التفكير الأعمق يحتاج وقتاً أطول قبل أوّل حرف — بلا هذا تُقطع الردود الاستراتيجية.
+          timeoutMs: effort === "high" ? 70_000 : 40_000,
+          maxTokens: 1800,
+          budgetMs: effort === "high" ? 125_000 : 100_000,
+          reasoningEffort: effort,
+        };
 
     let raw: string;
     if (campaign) {

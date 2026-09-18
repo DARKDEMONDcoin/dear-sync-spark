@@ -20,6 +20,7 @@ import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/te
 import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
 import { playbookFor } from "@/lib/playbooks";
+import { answerPolicyBlock } from "./answer-policy";
 import { replyStructureBlock } from "@/lib/reply-structure";
 
 type Deliverable = {
@@ -568,6 +569,7 @@ export async function runEmployeeTurn(
       `نبرة العلامة: ${workspace.tone}.`,
       nowBlock(timezone, ws.country),
       intentBlock(intent),
+      answerPolicyBlock(data.employeeId, intent),
       coworkerVoiceBlock({
         employeeId: data.employeeId,
         firstEver: firstEverTurn,

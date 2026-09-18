@@ -38,9 +38,23 @@ const SMALL =
  * يصنّف الرسالة. القاعدة: أي طلب فيه فعل إنتاج = عمل. غير ذلك سؤال أو دردشة،
  * ويجيب الموظف عليه مباشرة بذكاء بلا فرض خدماته.
  */
+/** صيغ الاستفهام في أول الرسالة. */
+const ASK_START =
+  /^(مين|من|ايه|إيه|ما هو|ما هي|ما|كام|كم|ليه|لماذا|امتى|إمتى|متى|فين|أين|وين|هل|ازاي|إزاي|كيف|أفضل|افضل|احسن|أحسن|يعني)(?![\p{L}])/u;
+
+/** فعل إنتاج صريح: يعني «سلّم لي الشيء» لا «أخبرني عنه». */
+const PRODUCE =
+  /(تكتب|تعمل|تصمّم|تصمم|تجهّز|تجهز|تولّد|تولد|تحلّل|تحلل|تنشر|اكتب|أكتب|اكتبلي|اعمل|إعمل|اعملي|سوّ|سويلي|جهّز|جهز|صمم|صمّم|ولّد|ولد لي|ولدلي|أنشئ|انشئ|ارسم|حضّر|حضر|انشر|أنشر|اجدول|جدول لي|حلّل|حلل|افحص|اعطني|أعطني|هات|عايز|عاوز|أريد|اريد|ابغى|أبغى|محتاج|create|generate|write|make|design)/iu;
+
 export function chatIntent(message: string): ChatIntent {
   const text = message.trim();
   if (!text) return "smalltalk";
+  // سؤال استشاري («ايه أحسن وقت للنشر؟») ليس طلب مخرج حتى لو ذكر كلمة من مجال العمل.
+  const looksLikeQuestion = /[؟?]\s*$/.test(text) || ASK_START.test(text);
+  // داخل صيغة سؤال، فعل الإنتاج يُحتسب فقط إن كان في أول الرسالة أو متبوعاً بـ«لي/لنا».
+  const producesNow = new RegExp(`^\\s*${PRODUCE.source}`, "iu").test(text) ||
+    new RegExp(`${PRODUCE.source}\\s*(لي|لنا|لى)`, "iu").test(text);
+  if (looksLikeQuestion && !producesNow) return "question";
   if (WORK.test(text)) return "work";
   if (SMALL.test(text) && text.length < 60) return "smalltalk";
   if (

@@ -21,6 +21,7 @@ import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
 import { playbookFor } from "@/lib/playbooks";
 import { answerPolicyBlock } from "./answer-policy";
+import { reasoningDepthBlock, effortFor } from "./reasoning-depth";
 import { replyStructureBlock } from "@/lib/reply-structure";
 
 type Deliverable = {
@@ -570,6 +571,7 @@ export async function runEmployeeTurn(
       nowBlock(timezone, ws.country),
       intentBlock(intent),
       answerPolicyBlock(data.employeeId, intent),
+      reasoningDepthBlock(data.employeeId, intent),
       coworkerVoiceBlock({
         employeeId: data.employeeId,
         firstEver: firstEverTurn,
@@ -746,9 +748,12 @@ export async function runEmployeeTurn(
       { role: "user", content: userTurn },
     ];
     // طلبات المقالات/الخطط الكاملة تحتاج مخرجاً طويلاً ومهلة أطول — مع سقف زمني إجمالي حتى لا يعلّق الشات.
+    // عمق الاستدلال يتغيّر حسب ثقل الطلب: دردشة سريعة بلا تفكير طويل، ومخرج
+    // استراتيجي بتفكير أعمق — ذكاء أعلى حيث يستحق، وسرعة حيث لا يضيف التفكير شيئاً.
+    const effort = effortFor(intent, data.message, longForm);
     const chatOptions = longForm
-      ? { json: true, timeoutMs: 75_000, maxTokens: 6000, budgetMs: 130_000 }
-      : { json: true, timeoutMs: 40_000, maxTokens: 1800, budgetMs: 100_000 };
+      ? { json: true, timeoutMs: 75_000, maxTokens: 6000, budgetMs: 130_000, reasoningEffort: effort }
+      : { json: true, timeoutMs: 40_000, maxTokens: 1800, budgetMs: 100_000, reasoningEffort: effort };
 
     let raw: string;
     if (campaign) {

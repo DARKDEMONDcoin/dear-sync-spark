@@ -56,6 +56,8 @@ export const FREE_MODELS = [
 
 export type ChatOptions = {
   json?: boolean;
+  /** عمق استدلال النموذج: منخفض للدردشة، عالٍ للمخرجات الاستراتيجية. */
+  reasoningEffort?: "low" | "medium" | "high";
   /** مهلة كل نموذج بالمللي ثانية (تمنع التعليق نهائياً). */
   timeoutMs?: number;
   maxTokens?: number;
@@ -178,7 +180,7 @@ async function callOpenAICompatible(
     body: JSON.stringify({
       model,
       // بدون هذا يستهلك gemini-3.6-flash دقائق في "التفكير" ويقطع الرد.
-      reasoning_effort: "low",
+      reasoning_effort: options.reasoningEffort ?? "low",
       ...priorityFields(endpoint, model),
       ...(options.json ? { response_format: { type: "json_object" } } : {}),
       ...(isGpt5(model) ? {} : { max_tokens: options.maxTokens ?? 1800 }),
@@ -344,7 +346,7 @@ async function callStream(
     body: JSON.stringify({
       model,
       stream: true,
-      reasoning_effort: "low",
+      reasoning_effort: options.reasoningEffort ?? "low",
       ...priorityFields(endpoint, model),
       ...(options.json ? { response_format: { type: "json_object" } } : {}),
       ...(isGpt5(model) ? {} : { max_tokens: options.maxTokens ?? 1800 }),

@@ -20,6 +20,7 @@ import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/te
 import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
 import { playbookFor } from "@/lib/playbooks";
+import { replyStructureBlock } from "@/lib/reply-structure";
 
 type Deliverable = {
   title?: string;

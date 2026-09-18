@@ -51,7 +51,10 @@ export function chatIntent(message: string): ChatIntent {
   if (!text) return "smalltalk";
   // سؤال استشاري («ايه أحسن وقت للنشر؟») ليس طلب مخرج حتى لو ذكر كلمة من مجال العمل.
   const looksLikeQuestion = /[؟?]\s*$/.test(text) || ASK_START.test(text);
-  if (looksLikeQuestion && !PRODUCE.test(text)) return "question";
+  // داخل صيغة سؤال، فعل الإنتاج يُحتسب فقط إن كان في أول الرسالة أو متبوعاً بـ«لي/لنا».
+  const producesNow = new RegExp(`^\\s*${PRODUCE.source}`, "iu").test(text) ||
+    new RegExp(`${PRODUCE.source}\\s*(لي|لنا|لى)`, "iu").test(text);
+  if (looksLikeQuestion && !producesNow) return "question";
   if (WORK.test(text)) return "work";
   if (SMALL.test(text) && text.length < 60) return "smalltalk";
   if (

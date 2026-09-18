@@ -80,7 +80,11 @@ export const normalizeText = (s: string): string =>
     .trim();
 
 export const topicTokens = (topic: string): string[] =>
-  [...new Set(normalizeText(topic).split(" "))].filter((w) => w.length > 2 && !AR_STOP.has(w));
+  [...new Set(normalizeText(topic).split(" "))].filter(
+    // السنة وحدها ليست موضوعاً: «2026» تظهر في كل صفحة على الإنترنت هذا العام،
+    // فلو عددناها صلة تسلّل إلينا أي شيء.
+    (w) => w.length > 2 && !AR_STOP.has(w) && !/^\d+$/.test(w),
+  );
 
 /**
  * نسبة كلمات الموضوع الظاهرة في الدليل (0–1).

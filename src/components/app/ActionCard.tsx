@@ -5,6 +5,7 @@
  */
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
 import { AppIcon, appLabel } from "@/components/site/AppIcon";
 import { runEmployeeAction } from "@/lib/employee-actions.functions";
@@ -32,8 +33,9 @@ export function ActionCard({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const exec = useServerFn(runEmployeeAction);
   const run = useMutation({
-    mutationFn: () => runEmployeeAction({ data: { workspaceId, actionId: action.id, values } }),
+    mutationFn: () => exec({ data: { workspaceId, actionId: action.id, values } }),
     onSuccess: () => {
       setDone(true);
       setError(null);

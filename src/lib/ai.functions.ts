@@ -1368,6 +1368,7 @@ export async function runEmployeeTurn(
       messageId: assistantRow.id,
       createdTaskId,
       needsConnection,
+      action: pendingAction,
       imageUrl,
       siteSuggestions,
     };

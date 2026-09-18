@@ -632,6 +632,8 @@ export async function runEmployeeTurn(
       brainText ? `## عقل العلامة (ذاكرة مشتركة بين الفريق)\n${brainText}` : "",
       teamActivity ? `## آخر ما أنجزه الفريق\n${teamActivity}` : "",
       research.block ? `${evidenceRules}\n\n## أدلة ميدانية (لحظية)\n${research.block}` : "",
+      // بحث الموظف في مجاله (أو قاعدة الصدق إن تعذّر البحث).
+      fieldResearchBlock ? `${research.block ? "" : `${evidenceRules}\n\n`}${fieldResearchBlock}` : "",
       // الحقائق اللحظية آخر ما يقرأه النموذج قبل الكتابة: أعلى أولوية وتتقدّم على أي قاعدة تحفّظ.
       liveBlock
         ? `${liveBlock}\n\nهذه الكتلة أعلى سلطة في الرد: أي رقم أو تاريخ فيها مؤكد ورسمي، اذكره كما هو بالحرف. ممنوع قول «لا يوجد رقم مؤكد» عن رقم مذكور هنا.`

@@ -321,6 +321,7 @@ export async function employeeResearch(
       city: opts.city ?? "",
       country: opts.country ?? "",
       year,
+      bridged,
     }).map(
       (fn) =>
         async (): Promise<Chunk | null> => {

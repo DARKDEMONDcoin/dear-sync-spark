@@ -32,13 +32,26 @@ import {
   worldBankFacts,
   type Finding,
 } from "./open-data.server";
+import {
+  devtoPosts,
+  europePmc,
+  lobstersHot,
+  npmPackages,
+  openLibraryBooks,
+  wikimediaArabic,
+} from "./open-data-plus.server";
 import { latinQuery } from "./query-translate";
 import { rankFindings, renderRanked } from "./research-rank";
 import { raceSources } from "./research-safety.server";
 import { bingSuggest, googleSuggest, serpSearch, type SerpResult } from "./seo-research.server";
 import { searxPoolSearch, wikipediaSearch } from "./searx-pool.server";
 
-export type EmployeeEvidence = { block: string; used: string[] };
+export type EmployeeEvidence = {
+  block: string;
+  used: string[];
+  /** أقوى الروابط بترتيبها — الطبقة العميقة تقرأ هذه الصفحات نصاً كاملاً. */
+  top?: { title: string; url: string; source: string }[];
+};
 const EMPTY: EmployeeEvidence = { block: "", used: [] };
 
 /** زوايا البحث لكل موظف: ما الذي يهمّه فعلاً في نفس الموضوع. */
@@ -90,6 +103,8 @@ function openSourcesFor(
   const en1 = (fn: (q: string) => Promise<Finding[]>) => (en ? () => fn(en) : noEn);
 
   const common: (() => Promise<Finding[]>)[] = [
+    // المصدر الوحيد الذي يفهم السؤال بالعربية كما هو، بلا ترجمة ولا تخمين.
+    () => wikimediaArabic(q),
     () => newsFor(q, "ar", ctx.country || "EG", 5),
     () => wikidataEntities(topic),
     () => ddgInstant(topic),
@@ -102,6 +117,7 @@ function openSourcesFor(
       en1((e) => openAlexWorks(`${e} advertising benchmark conversion rate`)),
       en1((e) => crossrefWorks(`${e} marketing performance benchmark`)),
       () => fxRates("USD", ["EGP", "SAR", "AED"]),
+      en1((e) => europePmc(`${e} advertising effectiveness consumer`)),
     ],
     // سام — السوق على الأرض: منافس حقيقي بموقعه، أسعار، ودراسات تسعير.
     sam: [
@@ -109,6 +125,7 @@ function openSourcesFor(
       en1((e) => openAlexWorks(`${e} pricing strategy willingness to pay`)),
       () => fxRates("USD", ["EGP", "SAR", "AED"]),
       en1((e) => hackerNews(`${e} pricing`)),
+      en1((e) => europePmc(`${e} consumer price perception`)),
     ],
     // دانة — ما يُبنى فعلاً: أدوات مفتوحة، نقاش محترفين، وما يتصاعد الآن.
     dana: [
@@ -116,12 +133,15 @@ function openSourcesFor(
       en1((e) => hackerNews(`${e} design`)),
       () => trendingNow(ctx.country || "EG"),
       en1((e) => openAlexWorks(`${e} visual branding perception`)),
+      en1((e) => devtoPosts("design")),
+      en1((e) => npmPackages(`${e} design tokens`)),
     ],
     // إيفا — معايير البريد الحقيقية ومشكلات الوصول للصندوق الوارد.
     eva: [
       en1((e) => openAlexWorks(`${e} email open rate benchmark`)),
       en1((e) => crossrefWorks(`${e} email marketing engagement`)),
       () => stackExchange("email deliverability SPF DKIM DMARC inbox", "serverfault"),
+      en1((e) => europePmc(`${e} email communication response rate`)),
     ],
     // سِراج — اللحظة نفسها: ترند البلد وأخبار الموضوع ونقاش المنصات.
     sonny: [
@@ -134,6 +154,9 @@ function openSourcesFor(
       en1((e) => githubRepos(`${e} seo tool`)),
       en1((e) => openAlexWorks(`${e} search engine optimization user intent`)),
       en1((e) => arxivPapers(`${e} search ranking user intent`)),
+      en1((e) => devtoPosts("seo")),
+      en1((e) => lobstersHot(e)),
+      en1((e) => openLibraryBooks(`${e} content strategy`)),
     ],
   };
 
@@ -295,6 +318,7 @@ export async function employeeResearch(
       chunks.map((c) => c.used),
       12,
     ),
+    top: ranked.slice(0, 8).map((r) => ({ title: r.title, url: r.url, source: r.source })),
   };
   cache.set(key, { at: Date.now(), value });
   return value;

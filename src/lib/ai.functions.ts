@@ -137,6 +137,14 @@ function harvestDeliverables(node: unknown, out: Deliverable[] = [], depth = 0):
   return out;
 }
 
+/**
+ * متى نشغّل البحث العميق (جولات متتابعة + قراءة داخل الصفحات + رصد التناقض)؟
+ * حين يطلبه المستخدم بلفظه، أو حين يكون المطلوب دراسة/تقريراً/مقارنة سوق —
+ * أي حين تكون كلفة الوقت أرخص من كلفة رقم خاطئ.
+ */
+const DEEP_RESEARCH_RE =
+  /(بحث عميق|ابحث بعمق|بعمق|ديب سيرش|deep\s*search|deep\s*research|دراسة سوق|تقرير مفصل|تقرير شامل|تحليل شامل|بحث موسع|بحث موسّع|ابحث كويس)/i;
+
 export const askEmployeeInput = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().min(1),
@@ -448,16 +456,25 @@ export async function runEmployeeTurn(
         : Promise.resolve(""),
       // بحث كل موظف بمصادر مجاله (آدم/سام/دانة/إيفا/سِراج، ونور كشبكة أمان).
       wantsResearch.wanted
-        ? import("./employee-research.server")
-            .then((m) =>
-              m.employeeResearch(data.employeeId, wantsResearch.topic, {
-                industry: workspace.industry,
-                city: (ws as { city?: string | null }).city ?? undefined,
-                country: ws.country ?? undefined,
-                budgetMs: longForm ? 18_000 : 12_000,
-              }),
-            )
-            .catch(() => ({ block: "", used: [] as string[] }))
+        ? (async () => {
+            const opts = {
+              industry: workspace.industry,
+              city: (ws as { city?: string | null }).city ?? undefined,
+              country: ws.country ?? undefined,
+              budgetMs: longForm ? 18_000 : 12_000,
+            };
+            // بحث عميق: جولات متتابعة تقرأ داخل الصفحات وتستخرج الأرقام بمصادرها.
+            // يُشغَّل حين يطلبه المستخدم صراحةً أو حين يكون المطلوب تقريراً/دراسة.
+            if (DEEP_RESEARCH_RE.test(data.message)) {
+              const m = await import("./deep-research.server");
+              return m.deepResearch(data.employeeId, wantsResearch.topic, {
+                ...opts,
+                deepBudgetMs: 50_000,
+              });
+            }
+            const m = await import("./employee-research.server");
+            return m.employeeResearch(data.employeeId, wantsResearch.topic, opts);
+          })().catch(() => ({ block: "", used: [] as string[] }))
         : Promise.resolve({ block: "", used: [] as string[] }),
     ]);
 

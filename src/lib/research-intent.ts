@@ -48,7 +48,7 @@ export type ResearchIntent = {
   /** المستخدم طلب البحث بنفسه بكلمة صريحة — نبحث حتى لو الرسالة قصيرة. */
   explicit: boolean;
   /** سبب التشغيل، للتشخيص ولاختيار المصادر. */
-  reason: "explicit" | "market" | "external" | "recency" | "none";
+  reason: "explicit" | "market" | "external" | "recency" | "gap" | "suppressed" | "none";
   /** الموضوع المنقّى الذي نبحث عنه فعلاً. */
   topic: string;
 };

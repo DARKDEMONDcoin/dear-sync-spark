@@ -20,6 +20,7 @@ import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/te
 import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
 import { playbookFor } from "@/lib/playbooks";
+import { replyStructureBlock } from "@/lib/reply-structure";
 
 type Deliverable = {
   title?: string;
@@ -460,6 +461,7 @@ export async function runEmployeeTurn(
     // تنفيذ فعلي لقدرات الأقسام من داخل الشات (فحص سيو، ترتيب، تقويم، أفكار، أداء).
     emit({ type: "step", label: "أفتح أدوات المنصة وأشغّل الفحص والتحليل بنفسي" });
     let toolBlocks: { block: string; footer: string; tool: string }[] = [];
+    let toolsFailed = false;
     try {
       const { runChatTools } = await import("./chat-tools.server");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -475,6 +477,7 @@ export async function runEmployeeTurn(
         brand: workspace.name,
       });
     } catch (e) {
+      toolsFailed = true;
       console.warn("[chat-tools] skipped:", e instanceof Error ? e.message : e);
     }
     if (toolBlocks.length) {
@@ -488,7 +491,9 @@ export async function runEmployeeTurn(
     }
     const toolsBlock = toolBlocks.length
       ? `## نتائج نفّذتها فعلاً الآن من أقسام المنصة (حقيقية — استخدمها حرفياً)\n${toolBlocks.map((t) => t.block).join("\n\n")}`
-      : "";
+      : toolsFailed
+        ? "## تنبيه: أدوات المنصة لم تستجب الآن\nحاولت تشغيل أدوات الفحص/البيانات ولم تستجب في هذه الرسالة. ممنوع اختلاق أي رقم أو نتيجة فحص أو بيانات أداء. اعتمد على معرفتك وأدلة العلامة، وسلّم المخرج كاملاً، واذكر في سطر واحد فقط أن الأرقام الحيّة غير متاحة الآن وأنك ستحدّثها عند توفّرها."
+        : "";
 
     const teamActivity = (recentTasks ?? [])
       .map((t) => {
@@ -625,8 +630,9 @@ export async function runEmployeeTurn(
       data.employeeId === "sonny" && intent === "work"
         ? "## بنية رد سِراج\nلطلبات المحتوى والنشر رتّب الرد هكذا: **الخلاصة** (الزاوية والهدف في سطر) ← `### المنشور` (النص الجاهز حرفياً كما يُنشر، بلا شرح داخله) ← `### الهاشتاقات` (بطبقات) ← `### الصورة/الفيديو` (سطر واحد عربي عمّا سيظهر + سطر «نص بديل:» يصف الصورة، والوصف الإنجليزي في image_prompt فقط) ← `### التوقيت والقياس` (وقت النشر بتوقيت الجمهور + مؤشر واحد يُقاس بعد 48 ساعة) ← `### الخطوة التالية`. لخطة أو عدة منشورات: جدول Markdown (اليوم | المنصة | الزاوية | نوع المخرج | وقت النشر) ثم النصوص الكاملة في المخرجات. أضف `### تنبيه` بسطر واحد فقط عند وجود خطر فعلي (ادعاء غير موثّق طلبه المستخدم، مجال حسّاس، أزمة، محتوى مدفوع بلا إفصاح، افتراض جوهري بنيت عليه)."
         : "",
-      data.employeeId === "sonny"
-        ? "افترض ما ينقص افتراضاً مهنياً ونفّذ فوراً؛ لا تسأل أكثر من سؤال واحد ولا تؤجّل المخرج بسبب معلومة ناقصة."
+      intent === "work" ? replyStructureBlock(data.employeeId) : "",
+      intent === "work"
+        ? "افترض ما ينقص افتراضاً مهنياً ونفّذ فوراً؛ لا تسأل أكثر من سؤال واحد وواضح، ولا تؤجّل المخرج بسبب معلومة ناقصة — اذكر افتراضك في سطر واحد وأكمل."
         : "",
 
       intent === "work"

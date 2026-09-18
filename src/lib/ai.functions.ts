@@ -971,6 +971,7 @@ export async function runEmployeeTurn(
     if (intent !== "work") {
       deliverables = [];
       needsConnection = null;
+      pendingAction = null;
     }
 
     // فحص جودة حتمي لكل منشور من أي موظف (هوك، طول المنصة، دعوة، هاشتاقات، حشو، بقايا تنسيق)

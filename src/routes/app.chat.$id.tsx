@@ -163,7 +163,8 @@ function MessageActions({
       } else {
         await navigator.clipboard.writeText(text);
         setShared(true);
-        setTimeout(() => setShared(false), 1600);
+        if (shareTimer.current) clearTimeout(shareTimer.current);
+        shareTimer.current = setTimeout(() => setShared(false), 1600);
       }
     } catch {
       /* أُلغيت المشاركة */

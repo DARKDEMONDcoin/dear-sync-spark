@@ -17,6 +17,7 @@ import {
   researchFor,
 } from "@/lib/nour-run.server";
 import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/team-knowledge";
+import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
 import { playbookFor } from "@/lib/playbooks";
 
@@ -580,6 +581,7 @@ export async function runEmployeeTurn(
         : "",
       craft[data.employeeId] ? `## معايير حِرفتك\n${craft[data.employeeId]}` : "",
       playbookFor(data.employeeId, data.message),
+      scopeBoundaryBlock(data.employeeId, data.message),
       sirajMemory,
       nourMemory,
       decisionsMemory,

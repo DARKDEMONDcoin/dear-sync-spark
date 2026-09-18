@@ -1214,6 +1214,7 @@ function ChatView({
                           )
                         ) : null}
                         {!isUser &&
+                        id === "sonny" &&
                         workspace &&
                         !m.body.includes("(/app/tasks)") &&
                         askedForPublishableOutput(lastUserBefore(arr, idx)) &&
@@ -1230,7 +1231,19 @@ function ChatView({
                           />
                         ) : null}
 
-                        {!isUser
+                        {(() => {
+                          const req = isUser ? m.body : lastUserBefore(arr, idx);
+                          const handoff = detectHandoff(req, id);
+                          if (!handoff) return null;
+                          // تظهر مرة واحدة: مع رسالة المستخدم مباشرة إن كانت آخر رسالة،
+                          // أو تحت رد الموظف بعدها.
+                          const nextIsAssistant = arr[idx + 1] && arr[idx + 1]!.role !== "user";
+                          if (isUser && nextIsAssistant) return null;
+                          return (
+                            <HandoffCard handoff={handoff} request={req} currentName={member.name} />
+                          );
+                        })()}
+                        {false
                           ? (() => {
                               const req = lastUserBefore(arr, idx);
                               const handoff = detectHandoff(req, id);

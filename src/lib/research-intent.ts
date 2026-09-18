@@ -37,11 +37,14 @@ export type ResearchIntent = {
 export function researchTopic(message: string): string {
   return message
     .replace(/^\s*(يا\s+)?(سِراج|سراج|نور|آدم|ادم|دانة|دانه|سام|سالم|إيفا|ايفا|أمل|امل)[،,:\s]*/i, "")
+    // ملاحظة: \b لا تعمل مع الحروف العربية في JS — لذلك بلا حدود كلمات هنا.
     .replace(
-      /\b(من\s*فضلك|لو\s*سمحت|please|ابحث\s*لي|ابحثلي|ابحث|أبحث|دوّر\s*لي|دور\s*لي|شوف\s*لي|شوفلي|هات\s*لي|جيب\s*لي|عايز|عاوز|أريد|اريد|محتاج|ممكن|search\s*for|look\s*up|find\s*me)\b/gi,
+      /(من\s*فضلك|لو\s*سمحت|please|ابحثلي|ابحث\s*لي|ابحث|أبحث|إبحث|دوّر\s*لي|دور\s*لي|شوفلي|شوف\s*لي|هات\s*لي|جيب\s*لي|عايز|عاوز|أريد|اريد|محتاج|ممكن|search\s*for|look\s*up|find\s*me)/gi,
       " ",
     )
     .replace(/^\s*(عن|على|في|حول|about|for)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*(عن|على|في|حول)\s+/i, "")
     .replace(/[?؟!.]+\s*$/, "")
     .replace(/\s+/g, " ")
     .trim()

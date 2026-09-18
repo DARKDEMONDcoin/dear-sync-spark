@@ -174,7 +174,8 @@ function rankPass(
       if (!relax && core.length >= 3 && coreHit + hits(f, aux) < 2) continue;
       // (3) المصادر متوسطة السلطة (مدونات، نتائج عامة) يجب أن يظهر الموضوع في عنوانها،
       //     وإلا فهي صفحة عن شيء آخر ورد فيه لفظنا عرَضاً.
-      if (!relax && weight <= 5 && titleHits(f, [...core, ...aux]) < 1) continue;
+      // تبقى سارية حتى في التمرير المتساهل: التساهل يوسّع الصلة ولا يلغيها.
+      if (weight <= 5 && titleHits(f, [...core, ...aux]) < 1) continue;
       // (4) مقال موسوعي لا يكون دليلاً إلا إن كان **عنوانه** عن موضوعنا؛
       //     ورود اللفظ داخل مقال عن شيء آخر مصادفة لا دليل.
       if (ENCYCLOPEDIC.has(f.source) && titleHits(f, core) < 1) continue;

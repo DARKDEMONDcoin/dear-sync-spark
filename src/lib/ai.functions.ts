@@ -892,8 +892,22 @@ export async function runEmployeeTurn(
           deliverable?: Deliverable | null;
           deliverables?: Deliverable[] | null;
           needs_connection?: NeedsConnection;
+          action?: { id?: string; values?: Record<string, unknown> } | null;
         } => Boolean(x) && typeof x === "object",
       );
+      // إجراء حقيقي اختاره الموظف: نقبله فقط إن كان ضمن إجراءاته وتكاملاته المربوطة.
+      const act = items.map((x) => x.action).find((a) => a && typeof a?.id === "string");
+      if (act?.id) {
+        const def = allowedActions.find((a) => a.id === act.id);
+        if (def) {
+          const values: Record<string, string> = {};
+          for (const [k, val] of Object.entries(act.values ?? {})) {
+            if (val === null || val === undefined) continue;
+            values[k] = typeof val === "string" ? val : JSON.stringify(val);
+          }
+          pendingAction = { ...def, values };
+        }
+      }
       const replies = items
         .map((x) => (typeof x.reply === "string" ? x.reply.trim() : ""))
         .filter(Boolean);

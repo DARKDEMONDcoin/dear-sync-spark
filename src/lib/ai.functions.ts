@@ -521,6 +521,41 @@ export async function runEmployeeTurn(
         ? "## تنبيه: أدوات المنصة لم تستجب الآن\nحاولت تشغيل أدوات الفحص/البيانات ولم تستجب في هذه الرسالة. ممنوع اختلاق أي رقم أو نتيجة فحص أو بيانات أداء. اعتمد على معرفتك وأدلة العلامة، وسلّم المخرج كاملاً، واذكر في سطر واحد فقط أن الأرقام الحيّة غير متاحة الآن وأنك ستحدّثها عند توفّرها."
         : "";
 
+    // ---- الإجراءات الحقيقية لهذا الموظف على تكاملاته المربوطة ----
+    // الموظف لا «يقترح» فقط: يملأ إجراءً حقيقياً (إرسال بريد، حجز موعد، إضافة صفقة،
+    // نشر مقال، رسالة سلاك…) ويعرضه على المالك للاعتماد بضغطة واحدة.
+    let allowedActions: {
+      id: string;
+      provider: string;
+      label: string;
+      inputs: { name: string; label: string; required?: boolean }[];
+    }[] = [];
+    try {
+      const { actionsFor } = await import("./employee-actions.server");
+      allowedActions = actionsFor(data.employeeId)
+        .filter((a) => connected.includes(a.provider))
+        .map((a) => ({ id: a.id, provider: a.provider, label: a.label, inputs: a.inputs }));
+    } catch (e) {
+      console.warn("[actions] catalog skipped:", e instanceof Error ? e.message : e);
+    }
+    const actionsBlock = allowedActions.length
+      ? [
+          "## إجراءات حقيقية تقدر تنفّذها الآن بتكاملاتك المربوطة",
+          "هذه ليست اقتراحات: كل إجراء هنا يُنفَّذ فعلياً على حساب العميل بعد اعتماده بضغطة واحدة تحت ردك.",
+          ...allowedActions
+            .slice(0, 40)
+            .map(
+              (a) =>
+                `- \`${a.id}\` — ${a.label} (${a.provider}) | الحقول: ${a.inputs
+                  .map((i) => `${i.name}${i.required ? "*" : ""}=${i.label}`)
+                  .join("، ")}`,
+            ),
+          'إن كان طلب المستخدم يحتاج تنفيذ أحد هذه الإجراءات، املأ الحقل "action" هكذا: {"id": "معرّف الإجراء", "values": {"اسم الحقل": "القيمة الجاهزة"}} — واكتب القيم كاملة جاهزة للإرسال (نص البريد كاملاً، التاريخ بصيغة ISO، البريد الصحيح…) لا فراغات ولا أقواس مربّعة.',
+          "اذكر في ردك بجملة واحدة أنك جهّزت الإجراء وأن اعتماده بضغطة واحدة تحت الرد، ولا تدّعِ أنك نفّذته قبل أن يعتمده المالك.",
+          'إن لم يكن الطلب بحاجة إلى إجراء منفّذ، اجعل "action" القيمة null.',
+        ].join("\n")
+      : "";
+
     const teamActivity = (recentTasks ?? [])
       .map((t) => {
         const who = employeeDirectory[t.employee_id as EmployeeId]?.name ?? t.employee_id;
@@ -641,6 +676,7 @@ export async function runEmployeeTurn(
       actionTruthRules,
       askedBlock,
       toolsBlock,
+      intent === "work" ? actionsBlock : "",
       "## أسلوب المحادثة",
       "فكّر داخلياً بالترتيب: افهم الهدف، تحقق من الأدلة، اختر الإجراء، ثم سلّم النتيجة. لا تعرض خطوات تفكيرك.",
       "راجع الإجابة قبل تسليمها: الدقة، الاكتمال، ملاءمة السوق العربي، صدق ما تم تنفيذه، وخطوة تالية واحدة.",
@@ -677,7 +713,7 @@ export async function runEmployeeTurn(
             'إن لم يكن هناك منشور مطلوب فاجعل "deliverable" هكذا: {"title": "عنوان الصورة", "kind": "صورة", "channel": null, "body": "سطر عربي واحد يصف ما تظهره الصورة", "scheduled": null, "image_prompt": "…English prompt…"}.',
           ].join("\n")
         : "",
-      'أعد ردك بصيغة JSON فقط بالشكل: {"reply": "نص ردك للمستخدم بصيغة Markdown", "deliverable": {"title": "عنوان المخرج", "kind": "نوع المخرج", "channel": "المنصة", "body": "نص المخرج الجاهز", "scheduled": "متى يُنفّذ", "image_prompt": "English visual prompt or null"} , "needs_connection": {"provider": "معرّف المنصة مثل instagram أو wordpress أو search-console", "reason": "سبب من 8 كلمات مرتبط بهذه المهمة"} }',
+      'أعد ردك بصيغة JSON فقط بالشكل: {"reply": "نص ردك للمستخدم بصيغة Markdown", "deliverable": {"title": "عنوان المخرج", "kind": "نوع المخرج", "channel": "المنصة", "body": "نص المخرج الجاهز", "scheduled": "متى يُنفّذ", "image_prompt": "English visual prompt or null"} , "needs_connection": {"provider": "معرّف المنصة مثل instagram أو wordpress أو search-console", "reason": "سبب من 8 كلمات مرتبط بهذه المهمة"}, "action": {"id": "معرّف إجراء من القائمة أعلاه", "values": {"اسم الحقل": "قيمته الجاهزة"}} }',
       'ممنوع تماماً ابتكار بنية JSON أخرى. إن طلب المستخدم عدة مخرجات (خطة أسبوع، عدة منشورات، عدة منصات) فاستخدم مصفوفة "deliverables": [ {نفس حقول deliverable}, … ] بدل deliverable، واجعل "reply" ملخصاً بالعربية للخطة (المحاور، التوزيع، مؤشرات القياس) — ولا تضع JSON داخل reply أو داخل body إطلاقاً.',
       "قاعدة إلزامية للخطط: عنصر واحد في deliverables لكل منشور فعلي (يوم × منصة). خطة 3 أيام على 3 منصات = 9 عناصر، لكل عنصر channel صحيح (instagram / linkedin / x) وtitle يذكر اليوم والمنصة وbody يحتوي نص ذلك المنشور وحده مع هاشتاجاته وscheduled بأفضل وقت نشر. ممنوع وضع ملخص الخطة داخل body أو الاكتفاء بمخرج واحد.",
       "حقل body يجب أن يكون نص المنشور/المقال الجاهز للنشر كما يقرأه الجمهور فقط — بلا مفاتيح ولا أقواس ولا وصف الصورة. ووصف الصورة الإنجليزي يوضع في image_prompt وحده ولا يظهر للمستخدم.",
@@ -810,6 +846,14 @@ export async function runEmployeeTurn(
     let reply = raw;
     let deliverables: Deliverable[] = [];
     let needsConnection: NeedsConnection = null;
+    /** إجراء حقيقي جاهز للاعتماد بضغطة واحدة تحت الرد. */
+    let pendingAction: {
+      id: string;
+      provider: string;
+      label: string;
+      inputs: { name: string; label: string; required?: boolean }[];
+      values: Record<string, string>;
+    } | null = null;
 
     // محاولة إصلاح واحدة فقط للمخرجات الطويلة التي لم تُرجع JSON صالحاً أو مخرجاً كاملاً.
     if (longForm && (!raw.trim().startsWith("{") || !/"reply"\s*:/.test(raw))) {
@@ -848,8 +892,22 @@ export async function runEmployeeTurn(
           deliverable?: Deliverable | null;
           deliverables?: Deliverable[] | null;
           needs_connection?: NeedsConnection;
+          action?: { id?: string; values?: Record<string, unknown> } | null;
         } => Boolean(x) && typeof x === "object",
       );
+      // إجراء حقيقي اختاره الموظف: نقبله فقط إن كان ضمن إجراءاته وتكاملاته المربوطة.
+      const act = items.map((x) => x.action).find((a) => a && typeof a?.id === "string");
+      if (act?.id) {
+        const def = allowedActions.find((a) => a.id === act.id);
+        if (def) {
+          const values: Record<string, string> = {};
+          for (const [k, val] of Object.entries(act.values ?? {})) {
+            if (val === null || val === undefined) continue;
+            values[k] = typeof val === "string" ? val : JSON.stringify(val);
+          }
+          pendingAction = { ...def, values };
+        }
+      }
       const replies = items
         .map((x) => (typeof x.reply === "string" ? x.reply.trim() : ""))
         .filter(Boolean);
@@ -913,6 +971,7 @@ export async function runEmployeeTurn(
     if (intent !== "work") {
       deliverables = [];
       needsConnection = null;
+      pendingAction = null;
     }
 
     // فحص جودة حتمي لكل منشور من أي موظف (هوك، طول المنصة، دعوة، هاشتاقات، حشو، بقايا تنسيق)
@@ -1309,6 +1368,7 @@ export async function runEmployeeTurn(
       messageId: assistantRow.id,
       createdTaskId,
       needsConnection,
+      action: pendingAction,
       imageUrl,
       siteSuggestions,
     };

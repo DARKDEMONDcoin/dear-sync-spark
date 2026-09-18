@@ -64,6 +64,7 @@ import { detectHandoff } from "@/lib/handoff";
 import { HandoffCard } from "@/components/app/HandoffCard";
 import { PublishToWordPress } from "@/components/app/PublishToWordPress";
 import { ActionPanel } from "@/components/app/ActionPanel";
+import { ActionCard, type PendingAction } from "@/components/app/ActionCard";
 import { UserAvatar } from "@/components/app/UserAvatar";
 import { BrandVoiceExtractor } from "@/components/app/BrandVoiceExtractor";
 import { Portrait } from "@/components/site/Portrait";
@@ -686,6 +687,8 @@ function ChatView({
     provider: string;
     reason: string;
   } | null>(null);
+  /** إجراء حقيقي جهّزه الموظف على تكامله المربوط — ينتظر اعتماد المالك بضغطة. */
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -887,6 +890,7 @@ function ChatView({
 
       setSavedTask(res?.createdTaskId ?? null);
       setNeedsConnection(res?.needsConnection ?? null);
+      setPendingAction((res?.action as PendingAction | null | undefined) ?? null);
       void qc.invalidateQueries({ queryKey: ["messages-last", workspace?.id] });
       void qc.invalidateQueries({ queryKey: ["conversations", workspace?.id, id] });
       void qc.invalidateQueries({ queryKey: ["tasks", workspace?.id] });
@@ -1319,6 +1323,14 @@ function ChatView({
                   inputRef.current?.focus();
                 }}
                 onDone={() => setSavedTask(null)}
+              />
+            ) : null}
+
+            {pendingAction && workspace && !busy ? (
+              <ActionCard
+                workspaceId={workspace.id}
+                action={pendingAction}
+                onDone={() => setPendingAction(null)}
               />
             ) : null}
 

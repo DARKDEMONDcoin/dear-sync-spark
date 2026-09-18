@@ -85,7 +85,13 @@ export type ResearchOpts = {
 };
 
 /**
- * مزيج المصادر المفتوحة لكل موظف: ما الذي يستحق فعلاً أن يُجلب في مجاله.
+ * اختيار المصادر — **بالموضوع لا بالموظف**.
+ *
+ * حصر كل موظف في مصادر مجاله كان خطأً بيّناً: لو سأل المستخدم سِراج عن سعر أو
+ * سأل دانة عن دراسة محكّمة، كان الجواب يأتي من مصادر لا تخدم السؤال. القاعدة
+ * الآن: **كل مصدر متاح لكل موظف**، ومن يقرر أيها يُستدعى هو طبيعة الموضوع نفسه.
+ * تخصص الموظف يبقى ترجيحاً في الترتيب لا سوراً حول المصادر.
+ *
  * كل عنصر دالة مستقلة تُسابَق ضمن الميزانية الزمنية، وفشل أي منها لا يضر البقية.
  */
 function openSourcesFor(
@@ -110,6 +116,63 @@ function openSourcesFor(
     () => ddgInstant(topic),
   ];
 
+  /** ما الذي يطلبه الموضوع نفسه؟ إشارات لغوية بالعربية والإنجليزية. */
+  const t = `${topic} ${ctx.industry}`.toLowerCase();
+  const has = (re: RegExp) => re.test(t);
+  const wantsMoney = has(
+    /(سعر|أسعار|اسعار|تكلفة|تكاليف|ميزانية|ربح|عائد|روي|تسعير|رسوم|price|pricing|cost|budget|roi|revenue|صرف|دولار|جنيه|ريال)/,
+  );
+  const wantsStudy = has(
+    /(دراسة|دراسات|بحث علمي|أبحاث|ابحاث|إحصائ|احصائ|معدل|معايير|benchmark|statistic|research|study|صحة|طبي|نفسي|سلوك)/,
+  );
+  const wantsTech = has(
+    /(كود|برمج|مكتبة|أداة|اداة|تقني|api|sdk|open\s?source|github|npm|framework|library|developer|تطوير|موقع|ووردبريس|wordpress|seo|سيو)/,
+  );
+  const wantsLocal = has(
+    /(قريب|بالقرب|في\s*القاهرة|في\s*الرياض|فرع|فروع|محل|مطعم|متجر|عنوان|خريطة|near|location|branch)/,
+  );
+  const wantsNow = has(
+    /(ترند|تريند|trend|رائج|خبر|أخبار|اخبار|news|اليوم|الآن|حالياً|حاليا|viral|هاشتاق|hashtag)/,
+  );
+  const wantsBook = has(/(كتاب|كتب|مرجع|دليل شامل|book|guide|منهج|إطار عمل|اطار عمل|framework)/);
+
+  /** المصادر التي يستدعيها الموضوع — متاحة لكل موظف بلا استثناء. */
+  const byTopic: (() => Promise<Finding[]>)[] = [];
+  if (wantsMoney) {
+    byTopic.push(
+      () => worldBankFacts(ctx.country || "EG"),
+      () => fxRates("USD", ["EGP", "SAR", "AED"]),
+      en1((e) => openAlexWorks(`${e} price willingness to pay`)),
+    );
+  }
+  if (wantsStudy) {
+    byTopic.push(
+      en1((e) => openAlexWorks(e)),
+      en1((e) => crossrefWorks(e)),
+      en1((e) => europePmc(e)),
+      en1((e) => arxivPapers(e)),
+    );
+  }
+  if (wantsTech) {
+    byTopic.push(
+      en1((e) => githubRepos(e)),
+      en1((e) => npmPackages(e)),
+      en1((e) => stackExchange(e)),
+      en1((e) => devtoPosts(e)),
+      en1((e) => lobstersHot(e)),
+    );
+  }
+  if (wantsLocal && ctx.city) byTopic.push(() => localPlaces(topic, ctx.city));
+  if (wantsNow) {
+    byTopic.push(
+      () => trendingNow(ctx.country || "EG"),
+      () => newsFor(q, "ar", ctx.country || "EG", 6),
+      en1((e) => hackerNews(e)),
+    );
+  }
+  if (wantsBook) byTopic.push(en1((e) => openLibraryBooks(e)));
+
+  /** ترجيح التخصص: زاوية إضافية يعرفها الموظف في مجاله — إضافة لا حصر. */
   const perEmployee: Record<string, (() => Promise<Finding[]>)[]> = {
     // آدم — الأرقام قبل الرأي: مؤشرات رسمية، دراسات، وأسعار صرف للمقارنة العادلة.
     adam: [
@@ -160,7 +223,12 @@ function openSourcesFor(
     ],
   };
 
-  return [...(perEmployee[employeeId] ?? perEmployee["nour"]!), ...common];
+  // الترتيب: ما يطلبه الموضوع أولاً، ثم زاوية تخصص الموظف، ثم المصادر العامة.
+  // إن لم يحمل الموضوع إشارة واضحة، تبقى كل المصادر الأساسية متاحة كما هي.
+  const specialist = perEmployee[employeeId] ?? perEmployee["nour"]!;
+  const merged = [...byTopic, ...specialist, ...common];
+  // سقف عملي: أكثر من ١٢ مصدراً في نفس الجولة يستهلك الميزانية بلا عائد.
+  return merged.slice(0, 12);
 }
 
 /** ذاكرة قصيرة: نفس الموضوع لنفس الموظف خلال نصف ساعة لا يستحق بحثاً جديداً. */

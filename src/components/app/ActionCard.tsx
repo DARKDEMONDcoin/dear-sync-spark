@@ -6,9 +6,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { AppIcon } from "@/components/app/AppIcon";
+import { AppIcon, appLabel } from "@/components/site/AppIcon";
 import { runEmployeeAction } from "@/lib/employee-actions.functions";
-import { appLabel } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
 export type PendingAction = {

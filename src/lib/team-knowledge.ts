@@ -293,6 +293,7 @@ export function sharedSystemBlocks(params: {
   return [
     masteryStandard,
     operatingPrinciples,
+    languageBlock(params.country),
     businessProfileBlock(params.profile, params.website, params.country),
     teamDirectoryBlock(params.employeeId),
     handoffBlock(params.employeeId),

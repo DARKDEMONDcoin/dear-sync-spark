@@ -1202,7 +1202,8 @@ export async function runEmployeeTurn(
 
     // عدة مخرجات: كل مخرج مستقل — نوجّه المستخدم إليها بدل محرّر واحد.
     if (deliverables.length > 1) {
-      const allPosts = deliverables.every((d) => Boolean(d.channel));
+      // «منشورات» كلمة سِراج وحده: ردود سام وإيفا تحمل قناة أيضاً وكانت تُوصف خطأً بأنها منشورات.
+      const allPosts = data.employeeId === "sonny" && deliverables.every((d) => Boolean(d.channel));
       reply = allPosts
         ? `${reply.trim()}\n\n📋 جهّزت **${deliverables.length} منشورات** منفصلة، كل منشور بنصه ومنصته وموعده — راجعها واعتمدها من [المخرجات والمهام](/app/tasks).`
         : `${reply.trim()}\n\n📋 جهّزت **${deliverables.length} مخرجات** جاهزة، كل واحد بنصه الكامل — راجعها واعتمدها من [المخرجات والمهام](/app/tasks).`;

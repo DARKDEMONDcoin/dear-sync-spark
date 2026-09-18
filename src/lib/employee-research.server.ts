@@ -97,14 +97,15 @@ export type ResearchOpts = {
 function openSourcesFor(
   employeeId: string,
   topic: string,
-  ctx: { industry: string; city: string; country: string; year: number },
+  ctx: { industry: string; city: string; country: string; year: number; bridged?: string },
 ): (() => Promise<Finding[]>)[] {
   const q = [topic, ctx.industry].filter(Boolean).join(" ").trim();
   /**
    * المصادر العالمية فهارسها إنجليزية: نسألها بالإنجليزية أو لا نسألها إطلاقاً.
    * استعلام عربي هناك لا يعيد فراغاً بل يعيد نتائج عشوائية تبدو كأدلة — وهذا أسوأ.
+   * المقابل يأتي من معجمنا، وإلا فمن ترجمة ويكيبيديا الموثّقة، وإلا فالصمت.
    */
-  const en = latinQuery(`${topic} ${ctx.industry}`);
+  const en = latinQuery(`${topic} ${ctx.industry}`) || (ctx.bridged ?? "");
   const noEn: () => Promise<Finding[]> = () => Promise.resolve([]);
   const en1 = (fn: (q: string) => Promise<Finding[]>) => (en ? () => fn(en) : noEn);
 
@@ -263,6 +264,14 @@ export async function employeeResearch(
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
   const year = new Date().getFullYear();
+  /**
+   * جسر اللغة: إن لم يعرف معجمنا مقابلاً لاتينياً للموضوع، نسأل ويكيبيديا عن
+   * ترجمته الموثّقة. بدون هذا تصمت كل المصادر العالمية أمام أي سؤال عربي
+   * خارج مصطلحات التسويق — وهي أغلب أسئلة المستخدمين.
+   */
+  const bridged = latinQuery(seed)
+    ? ""
+    : await (await import("./open-data-plus.server")).bridgeToEnglish(seed).catch(() => "");
   const context = [seed, opts.industry ?? "", opts.city ?? ""].filter(Boolean).join(" ").trim();
   const angles = (ANGLES[employeeId] ?? ANGLES["nour"]!)(context, year);
 
@@ -320,6 +329,7 @@ export async function employeeResearch(
       city: opts.city ?? "",
       country: opts.country ?? "",
       year,
+      bridged,
     }).map(
       (fn) =>
         async (): Promise<Chunk | null> => {

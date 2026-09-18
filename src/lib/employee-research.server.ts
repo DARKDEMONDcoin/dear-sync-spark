@@ -264,6 +264,14 @@ export async function employeeResearch(
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 
   const year = new Date().getFullYear();
+  /**
+   * جسر اللغة: إن لم يعرف معجمنا مقابلاً لاتينياً للموضوع، نسأل ويكيبيديا عن
+   * ترجمته الموثّقة. بدون هذا تصمت كل المصادر العالمية أمام أي سؤال عربي
+   * خارج مصطلحات التسويق — وهي أغلب أسئلة المستخدمين.
+   */
+  const bridged = latinQuery(seed)
+    ? ""
+    : await (await import("./open-data-plus.server")).bridgeToEnglish(seed).catch(() => "");
   const context = [seed, opts.industry ?? "", opts.city ?? ""].filter(Boolean).join(" ").trim();
   const angles = (ANGLES[employeeId] ?? ANGLES["nour"]!)(context, year);
 

@@ -846,6 +846,14 @@ export async function runEmployeeTurn(
     let reply = raw;
     let deliverables: Deliverable[] = [];
     let needsConnection: NeedsConnection = null;
+    /** إجراء حقيقي جاهز للاعتماد بضغطة واحدة تحت الرد. */
+    let pendingAction: {
+      id: string;
+      provider: string;
+      label: string;
+      inputs: { name: string; label: string; required?: boolean }[];
+      values: Record<string, string>;
+    } | null = null;
 
     // محاولة إصلاح واحدة فقط للمخرجات الطويلة التي لم تُرجع JSON صالحاً أو مخرجاً كاملاً.
     if (longForm && (!raw.trim().startsWith("{") || !/"reply"\s*:/.test(raw))) {

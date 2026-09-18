@@ -521,6 +521,41 @@ export async function runEmployeeTurn(
         ? "## تنبيه: أدوات المنصة لم تستجب الآن\nحاولت تشغيل أدوات الفحص/البيانات ولم تستجب في هذه الرسالة. ممنوع اختلاق أي رقم أو نتيجة فحص أو بيانات أداء. اعتمد على معرفتك وأدلة العلامة، وسلّم المخرج كاملاً، واذكر في سطر واحد فقط أن الأرقام الحيّة غير متاحة الآن وأنك ستحدّثها عند توفّرها."
         : "";
 
+    // ---- الإجراءات الحقيقية لهذا الموظف على تكاملاته المربوطة ----
+    // الموظف لا «يقترح» فقط: يملأ إجراءً حقيقياً (إرسال بريد، حجز موعد، إضافة صفقة،
+    // نشر مقال، رسالة سلاك…) ويعرضه على المالك للاعتماد بضغطة واحدة.
+    let allowedActions: {
+      id: string;
+      provider: string;
+      label: string;
+      inputs: { name: string; label: string; required?: boolean }[];
+    }[] = [];
+    try {
+      const { actionsFor } = await import("./employee-actions.server");
+      allowedActions = actionsFor(data.employeeId)
+        .filter((a) => connected.includes(a.provider))
+        .map((a) => ({ id: a.id, provider: a.provider, label: a.label, inputs: a.inputs }));
+    } catch (e) {
+      console.warn("[actions] catalog skipped:", e instanceof Error ? e.message : e);
+    }
+    const actionsBlock = allowedActions.length
+      ? [
+          "## إجراءات حقيقية تقدر تنفّذها الآن بتكاملاتك المربوطة",
+          "هذه ليست اقتراحات: كل إجراء هنا يُنفَّذ فعلياً على حساب العميل بعد اعتماده بضغطة واحدة تحت ردك.",
+          ...allowedActions
+            .slice(0, 40)
+            .map(
+              (a) =>
+                `- \`${a.id}\` — ${a.label} (${a.provider}) | الحقول: ${a.inputs
+                  .map((i) => `${i.name}${i.required ? "*" : ""}=${i.label}`)
+                  .join("، ")}`,
+            ),
+          'إن كان طلب المستخدم يحتاج تنفيذ أحد هذه الإجراءات، املأ الحقل "action" هكذا: {"id": "معرّف الإجراء", "values": {"اسم الحقل": "القيمة الجاهزة"}} — واكتب القيم كاملة جاهزة للإرسال (نص البريد كاملاً، التاريخ بصيغة ISO، البريد الصحيح…) لا فراغات ولا أقواس مربّعة.',
+          "اذكر في ردك بجملة واحدة أنك جهّزت الإجراء وأن اعتماده بضغطة واحدة تحت الرد، ولا تدّعِ أنك نفّذته قبل أن يعتمده المالك.",
+          'إن لم يكن الطلب بحاجة إلى إجراء منفّذ، اجعل "action" القيمة null.',
+        ].join("\n")
+      : "";
+
     const teamActivity = (recentTasks ?? [])
       .map((t) => {
         const who = employeeDirectory[t.employee_id as EmployeeId]?.name ?? t.employee_id;

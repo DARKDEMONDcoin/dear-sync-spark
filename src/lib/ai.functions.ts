@@ -423,8 +423,13 @@ export async function runEmployeeTurn(
     const timezone =
       (workspace as { timezone?: string | null }).timezone ?? timezoneForCountry(ws.country);
 
+    // بوابة نية البحث: تلتقط «ابحث/قارن/معايير السوق/منافس/ترند» لكل الموظفين،
+    // لا الكلمات الزمنية وحدها — فلا يجيب موظف عن واقع السوق من معرفة مخزّنة.
+    const { researchIntent } = await import("./research-intent");
+    const wantsResearch = researchIntent(data.message);
+
     emit({ type: "step", label: `أجمع أدلة وأرقاماً حقيقية عن «${turnTopic}»` });
-    const [research, liveBlock] = await Promise.all([
+    const [research, liveBlock, ownFieldResearch] = await Promise.all([
       researchFor(
         data.employeeId,
         apiKey,
@@ -441,7 +446,26 @@ export async function runEmployeeTurn(
             timeZone: timezone,
           }).catch(() => "")
         : Promise.resolve(""),
+      // بحث كل موظف بمصادر مجاله (آدم/سام/دانة/إيفا/سِراج، ونور كشبكة أمان).
+      wantsResearch.wanted
+        ? import("./employee-research.server")
+            .then((m) =>
+              m.employeeResearch(data.employeeId, wantsResearch.topic, {
+                industry: workspace.industry,
+                city: (ws as { city?: string | null }).city ?? undefined,
+                budgetMs: longForm ? 18_000 : 12_000,
+              }),
+            )
+            .catch(() => ({ block: "", used: [] as string[] }))
+        : Promise.resolve({ block: "", used: [] as string[] }),
     ]);
+
+    /** أدلة مجال الموظف، أو قاعدة صدق صريحة إن طلب المستخدم بحثاً ولم يصل شيء. */
+    const fieldResearchBlock = ownFieldResearch.block
+      ? ownFieldResearch.block
+      : wantsResearch.explicit && !research.block && !liveBlock
+        ? (await import("./employee-research.server")).noResearchHonestyBlock(wantsResearch.topic)
+        : "";
 
     // المنصة التي سمّاها المستخدم بنفسه — تُحترم حرفياً ولا تُبدَّل بغيرها.
     const { requestedPublishTargets, providerLabel } = await import("./platforms");

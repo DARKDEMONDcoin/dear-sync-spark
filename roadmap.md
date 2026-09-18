@@ -1,6 +1,8 @@
-# Roadmap
+# خارطة العمل: نظام البحث الموحّد (الأفضل عالمياً)
 
-- [ ] Audit every AI employee path for time and live-context coverage
-- [ ] Close any remaining coverage or reliability gaps
-- [ ] Validate type safety and live employee responses
-- [ ] Validate the signed-in chat experience
+## المهام
+- [ ] 1. بوابة نية البحث: التقاط «ابحث/شوف لي/قارن/معايير السوق» لكل الموظفين (لا الكلمات الزمنية فقط)
+- [ ] 2. مصادر بحث مخصصة لكل موظف: adam, sam, dana, eva (+ توسيع nour, sonny)
+- [ ] 3. تشغيل بحث سِراج السوشيال داخل المحادثة لا في المهارات فقط
+- [ ] 4. قاعدة صريحة: «معرفة عامة لا بحث لحظي» عند غياب البحث
+- [ ] 5. طبقة أمان البحث (بلا حظر للأبد): تهدئة، تخزين مؤقت، مهلات، تدوير مصادر، احترام robots، UA واضح، circuit breaker

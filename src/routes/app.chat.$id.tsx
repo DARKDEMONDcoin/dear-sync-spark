@@ -1243,19 +1243,6 @@ function ChatView({
                             <HandoffCard handoff={handoff} request={req} currentName={member.name} />
                           );
                         })()}
-                        {false
-                          ? (() => {
-                              const req = lastUserBefore(arr, idx);
-                              const handoff = detectHandoff(req, id);
-                              return handoff ? (
-                                <HandoffCard
-                                  handoff={handoff}
-                                  request={req}
-                                  currentName={member.name}
-                                />
-                              ) : null;
-                            })()
-                          : null}
 
                         <div
                           className={cn(

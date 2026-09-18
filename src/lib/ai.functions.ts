@@ -571,7 +571,7 @@ export async function runEmployeeTurn(
       nowBlock(timezone, ws.country),
       intentBlock(intent),
       answerPolicyBlock(data.employeeId, intent),
-      reasoningDepthBlock(data.employeeId, intent),
+      reasoningDepthBlock(data.employeeId as EmployeeId, intent),
       coworkerVoiceBlock({
         employeeId: data.employeeId,
         firstEver: firstEverTurn,

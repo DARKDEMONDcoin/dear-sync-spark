@@ -453,6 +453,7 @@ export async function runEmployeeTurn(
               m.employeeResearch(data.employeeId, wantsResearch.topic, {
                 industry: workspace.industry,
                 city: (ws as { city?: string | null }).city ?? undefined,
+                country: ws.country ?? undefined,
                 budgetMs: longForm ? 18_000 : 12_000,
               }),
             )

@@ -168,6 +168,7 @@ function rankPass(
 
   for (const f of findings) {
     if (!f.title || !f.url) continue;
+    if (BANNED_DOMAIN.test(f.url)) continue;
     if (f.kind !== "context" && NEVER_EVIDENCE.test(f.url)) continue;
     const weight = SOURCE_WEIGHT[f.source] ?? DEFAULT_WEIGHT;
     const coreHit = hits(f, core);

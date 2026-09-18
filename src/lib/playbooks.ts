@@ -28,10 +28,9 @@ export function playbookFor(employeeId: string, message?: string): string {
   const core = CORE[employeeId];
   if (core) blocks.push(core);
   const adsRelevant =
-    employeeId === "sonny" ||
-    ((employeeId === "adam" || employeeId === "dana" || employeeId === "sam") &&
-      !!message &&
-      isAdsRequest(message));
+    (employeeId === "sonny" || employeeId === "adam" || employeeId === "dana" || employeeId === "sam") &&
+    // بلا رسالة نُبقي دليل الإعلانات لسِراج (السلوك الافتراضي القديم).
+    (!message ? employeeId === "sonny" : isAdsRequest(message));
   if (adsRelevant) blocks.push(adsPlaybookBlock());
   return blocks.filter(Boolean).join("\n\n");
 }

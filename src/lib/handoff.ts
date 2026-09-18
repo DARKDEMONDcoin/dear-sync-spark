@@ -166,7 +166,8 @@ export type Handoff = { id: EmployeeId; name: string; role: string; topic: strin
 
 function score(text: string, rule: Rule): number {
   let n = 0;
-  for (const w of rule.words) if (text.includes(w)) n += w.length > 5 ? 2 : 1;
+  // الكلمات الدالة هنا كلها مصطلحات مجال، فكلمة واحدة واضحة تكفي للإحالة.
+  for (const w of rule.words) if (text.includes(w)) n += w.length > 5 ? 3 : w.length >= 4 ? 2 : 1;
   return n;
 }
 

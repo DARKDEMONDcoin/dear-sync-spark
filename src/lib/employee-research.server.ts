@@ -223,7 +223,12 @@ function openSourcesFor(
     ],
   };
 
-  return [...(perEmployee[employeeId] ?? perEmployee["nour"]!), ...common];
+  // الترتيب: ما يطلبه الموضوع أولاً، ثم زاوية تخصص الموظف، ثم المصادر العامة.
+  // إن لم يحمل الموضوع إشارة واضحة، تبقى كل المصادر الأساسية متاحة كما هي.
+  const specialist = perEmployee[employeeId] ?? perEmployee["nour"]!;
+  const merged = [...byTopic, ...specialist, ...common];
+  // سقف عملي: أكثر من ١٢ مصدراً في نفس الجولة يستهلك الميزانية بلا عائد.
+  return merged.slice(0, 12);
 }
 
 /** ذاكرة قصيرة: نفس الموضوع لنفس الموظف خلال نصف ساعة لا يستحق بحثاً جديداً. */

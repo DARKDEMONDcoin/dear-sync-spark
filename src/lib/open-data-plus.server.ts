@@ -172,3 +172,55 @@ export async function relatedTerms(englishQuery: string, limit = 6): Promise<str
     .filter((w) => w.length > 2)
     .slice(0, limit);
 }
+
+/**
+ * جسر اللغة الحقيقي — ترجمة المصطلح العربي إلى مقابله الإنجليزي عبر ويكيبيديا.
+ *
+ * معجمنا اليدوي يغطي مصطلحات التسويق فقط، فسؤال مثل «أثر الألوان على قرار
+ * الشراء» كان يصمت أمام كل المصادر العالمية لأنه بلا مقابل لاتيني. ويكيبيديا
+ * تحل هذا مجاناً: نبحث المقال بالعربية، ثم نأخذ عنوان نسخته الإنجليزية —
+ * وهي ترجمة بشرية موثّقة لا تخمين آلي.
+ *
+ * يعيد "" حين لا يجد مقابلاً: الصمت أصدق من مصطلح مخترع يجلب أدلة عن موضوع آخر.
+ */
+export async function bridgeToEnglish(arabic: string): Promise<string> {
+  const q = (arabic ?? "").trim().slice(0, 80);
+  if (!q || !/[\u0600-\u06FF]/.test(q)) return "";
+  const norm = (s: string) =>
+    s.replace(/[\u064B-\u0652\u0640]/g, "").replace(/[\u0623\u0625\u0622]/g, "\u0627").replace(/\s+/g, " ").trim();
+  const haystack = norm(q);
+  const words = haystack.split(" ").filter((w) => w.length > 2);
+
+  /**
+   * نجرّب العبارة كاملة ثم نقصّرها كلمةً كلمة. سبب التدرّج: فهرس ويكيبيديا
+   * يعرف «سلوك المستهلك» ولا يعرف «سلوك المستهلك في المطاعم»، والمفهوم الأصلي
+   * هو ما نريد ترجمته لا الجملة كما نطقها المستخدم.
+   */
+  const candidates = [...new Set([haystack, words.slice(0, 3).join(" "), words.slice(0, 2).join(" ")])]
+    .filter((c) => c.length > 4)
+    .slice(0, 3);
+
+  for (const phrase of candidates) {
+    const hit = await safeJson<{ pages?: { key?: string; title?: string }[] }>(
+      `https://api.wikimedia.org/core/v1/wikipedia/ar/search/title?q=${encodeURIComponent(phrase)}&limit=3`,
+      API,
+    );
+    /**
+     * شرط القبول: عنوان المقال العربي مذكور داخل سؤالنا نفسه. بدونه يترجم
+     * البحث مفهوماً مجاوراً لم يسأل عنه أحد («البصرة» لسؤال عن «هوية بصرية»)
+     * فنجلب أدلة عن موضوع آخر — وهذا أسوأ من الصمت.
+     */
+    const title = (hit?.pages ?? [])
+      .map((p) => p.title ?? p.key ?? "")
+      .find((t) => t.length > 3 && haystack.includes(norm(t)));
+    if (!title) continue;
+
+    const links = await safeJson<{ title?: string; code?: string }[]>(
+      `https://ar.wikipedia.org/w/rest.php/v1/page/${encodeURIComponent(title)}/links/language`,
+      API,
+    );
+    const en = (links ?? []).find((l) => l.code === "en")?.title;
+    if (en && /^[\w\s\-'&.]+$/.test(en)) return en.slice(0, 90);
+  }
+  return "";
+}

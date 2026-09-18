@@ -34,7 +34,8 @@ const SUPPRESS =
  * «كام؟ بكام؟ قد إيه؟ نسبة؟ معدل؟» — كلها أسئلة إجابتها في السوق لا في الذاكرة.
  */
 const GAP =
-  /(كام|بكام|قد\s*إيه|قد\s*ايه|كم\s*يكلف|كم\s*سعر|كم\s*تكلفة|ما\s*متوسط|متوسط\s*(ال)?(سعر|تكلفة|معدل)|نسبة\s*(ال)?(تحويل|فتح|ارتداد|نقر)|معدل\s*(ال)?(تحويل|فتح|نقر)|how\s*much|average\s*(cost|price|rate)|conversion\s*rate)/i;
+  // «كام» كلمة قائمة بذاتها: بلا حدّ حولها تنطبق على «كامل» فينطلق بحث بلا داعٍ.
+  /((?<![\p{L}])ب?كام(?![\p{L}])|قد\s*إيه|قد\s*ايه|كم\s*يكلف|كم\s*سعر|كم\s*تكلفة|ما\s*متوسط|متوسط\s*(ال)?(سعر|تكلفة|معدل)|نسبة\s*(ال)?(تحويل|فتح|ارتداد|نقر)|معدل\s*(ال)?(تحويل|فتح|نقر)|how\s*much|average\s*(cost|price|rate)|conversion\s*rate)/iu;
 
 /**
  * شغل داخلي بحت: بياناتنا نحن لا بيانات السوق. «عروضنا، منتجاتنا، حملتنا»
@@ -86,9 +87,18 @@ export function researchIntent(message: string): ResearchIntent {
     return none;
   }
 
+  // منع صريح يتقدّم على كل شيء: من قال «بدون بحث» ينتظر رداً فورياً.
+  if (SUPPRESS.test(text)) return { ...none, reason: "suppressed" };
+
   if (EXPLICIT.test(text)) return { wanted: true, explicit: true, reason: "explicit", topic };
+  // شغل داخلي بحت («اكتب بوست عن عروضنا»): بياناتنا ليست على الإنترنت،
+  // والبحث عنها تأخير بلا فائدة. تُستثنى المقارنة الصريحة بالسوق.
+  if (OURS.test(text) && !MARKET.test(text) && !EXTERNAL.test(text)) return none;
+
   if (MARKET.test(text)) return { wanted: true, explicit: false, reason: "market", topic };
   if (EXTERNAL.test(text)) return { wanted: true, explicit: false, reason: "external", topic };
+  // ثغرة معرفية: سؤال عن رقم أو معدّل لا يملكه الموظف — الجواب في السوق لا في ذاكرته.
+  if (GAP.test(text)) return { wanted: true, explicit: false, reason: "gap", topic };
   // الكلمات الزمنية وحدها تكفي فقط في رسالة ذات محتوى، لا في «عامل إيه النهاردة؟».
   if (RECENCY.test(text) && text.length > 24) {
     return { wanted: true, explicit: false, reason: "recency", topic };

@@ -113,6 +113,9 @@ function conversationDate(iso: string) {
 
 function CopyButton({ text }: { text: string }) {
   const [done, setDone] = useState(false);
+  /** المؤقّت يُلغى عند الخروج: بدونه يُحدَّث زر مختفٍ بعد تبديل المحادثة. */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   return (
     <button
       type="button"
@@ -120,7 +123,8 @@ function CopyButton({ text }: { text: string }) {
         try {
           await navigator.clipboard.writeText(text);
           setDone(true);
-          setTimeout(() => setDone(false), 1600);
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(() => setDone(false), 1600);
         } catch {
           /* تجاهل */
         }
@@ -147,6 +151,9 @@ function MessageActions({
   disabled: boolean;
 }) {
   const [shared, setShared] = useState(false);
+  /** المؤقّت يُلغى عند الخروج: بدونه يُحدَّث زر مختفٍ بعد تبديل المحادثة. */
+  const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (shareTimer.current) clearTimeout(shareTimer.current); }, []);
   const btn =
     "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.7rem] font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50";
   const share = async () => {
@@ -156,7 +163,8 @@ function MessageActions({
       } else {
         await navigator.clipboard.writeText(text);
         setShared(true);
-        setTimeout(() => setShared(false), 1600);
+        if (shareTimer.current) clearTimeout(shareTimer.current);
+        shareTimer.current = setTimeout(() => setShared(false), 1600);
       }
     } catch {
       /* أُلغيت المشاركة */

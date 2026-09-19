@@ -666,6 +666,7 @@ export async function runEmployeeTurn(
         ? `كلمات ممنوعة تماماً: ${workspace.banned_words.join("، ")}.`
         : "",
       craft[data.employeeId] ? `## معايير حِرفتك\n${craft[data.employeeId]}` : "",
+      intent === "work" ? frontierEdgeBlock(data.employeeId) : "",
       playbookFor(data.employeeId, data.message),
       scopeBoundaryBlock(data.employeeId, data.message),
       sirajMemory,

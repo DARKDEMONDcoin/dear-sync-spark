@@ -54,6 +54,7 @@ import {
   useWorkspace,
 } from "@/lib/data";
 import { askEmployee, runSkill } from "@/lib/ai.functions";
+import { saveChatSignal } from "@/lib/learning.functions";
 import { SkillPalette } from "@/components/app/SkillPalette";
 import { Thinking } from "@/components/app/Thinking";
 import { Markdown } from "@/components/app/Markdown";
@@ -748,6 +749,14 @@ function ChatView({
 
   const ask = useServerFn(askEmployee);
   const runSkillFn = useServerFn(runSkill);
+  /** إشارة صامتة للتعلّم: «عدّل» أو «أعد التوليد» تقييمٌ حقيقي لا يحتاج سؤال المالك. */
+  const sendChatSignal = useServerFn(saveChatSignal);
+  const signal = (messageId: string, kind: "edited" | "rejected", originalText: string) => {
+    if (!workspace) return;
+    void sendChatSignal({
+      data: { workspaceId: workspace.id, employeeId: id, messageId, kind, originalText },
+    }).catch(() => undefined);
+  };
   const employeeSkills = skillsFor(id);
   const quickSkills = featuredSkillsFor(id).slice(0, 6);
   const employeeCopy: { prompts: string[]; greetings: string[] } =
@@ -1274,13 +1283,16 @@ function ChatView({
                                   // التعديل اليدوي لمنشور = نص المنشور فقط، بلا شرح الموظف.
                                   setDraft(looksPostable(body) ? extractPostText(body) : body);
                                   inputRef.current?.focus();
+                                  signal(m.id, "edited", m.body);
                                 }}
                                 onRegenerate={
                                   lastUserBefore(arr, idx)
-                                    ? () =>
-                                        submit(
+                                    ? () => {
+                                        signal(m.id, "rejected", m.body);
+                                        void submit(
                                           `${lastUserBefore(arr, idx)}\n\n(أعد صياغة الرد السابق بزاوية مختلفة وأقوى، وحافظ على نفس الطلب.)`,
-                                        )
+                                        );
+                                      }
                                     : null
                                 }
                               />

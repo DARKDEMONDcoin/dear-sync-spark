@@ -131,3 +131,32 @@ export const saveLearningFeedback = createServerFn({ method: "POST" })
     await buildLearningCandidates(context.supabase, data.workspaceId, data.employeeId);
     return { ok: true };
   });
+
+/**
+ * إشارة ضمنية من المحادثة: أعاد المالك التوليد، أو أخذ النص ليعدّله بنفسه.
+ * تُسجَّل بلا نصّ درس — دليل رسوب يدخل بوابة الأمان في دورة القياس الليلية.
+ */
+export const saveChatSignal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        workspaceId: z.string().uuid(),
+        employeeId: z.string().min(1),
+        messageId: z.string().uuid(),
+        kind: z.enum(["edited", "rejected"]),
+        originalText: z.string().max(20000).nullish(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await owns(context.supabase, data.workspaceId);
+    const { recordChatSignal } = await import("./learning.server");
+    return recordChatSignal(context.supabase, {
+      workspaceId: data.workspaceId,
+      employeeId: data.employeeId,
+      messageId: data.messageId,
+      kind: data.kind,
+      originalText: data.originalText ?? null,
+    });
+  });

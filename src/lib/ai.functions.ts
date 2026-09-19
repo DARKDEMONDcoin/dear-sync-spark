@@ -19,6 +19,7 @@ import {
 import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/team-knowledge";
 import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
+import { frontierEdgeBlock } from "@/lib/frontier-edge";
 import { playbookFor } from "@/lib/playbooks";
 import { answerPolicyBlock } from "./answer-policy";
 import { reasoningDepthBlock, effortFor } from "./reasoning-depth";
@@ -666,6 +667,7 @@ export async function runEmployeeTurn(
         ? `كلمات ممنوعة تماماً: ${workspace.banned_words.join("، ")}.`
         : "",
       craft[data.employeeId] ? `## معايير حِرفتك\n${craft[data.employeeId]}` : "",
+      intent === "work" ? frontierEdgeBlock(data.employeeId as EmployeeId) : "",
       playbookFor(data.employeeId, data.message),
       scopeBoundaryBlock(data.employeeId, data.message),
       sirajMemory,

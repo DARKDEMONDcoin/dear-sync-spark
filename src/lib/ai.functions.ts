@@ -19,6 +19,7 @@ import {
 import { employeeDirectory, sharedSystemBlocks, type EmployeeId } from "@/lib/team-knowledge";
 import { scopeBoundaryBlock } from "@/lib/scope-boundaries";
 import { employeeEdgeBlock } from "@/lib/employee-edge";
+import { frontierEdgeBlock } from "@/lib/frontier-edge";
 import { playbookFor } from "@/lib/playbooks";
 import { answerPolicyBlock } from "./answer-policy";
 import { reasoningDepthBlock, effortFor } from "./reasoning-depth";

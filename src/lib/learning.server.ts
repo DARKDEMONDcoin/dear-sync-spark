@@ -29,16 +29,91 @@ export async function learningBlock(client: Client, workspaceId: string, employe
       lesson.status === "active" ||
       (lesson.risk_level === "low" && Math.random() * 100 < experimentPercent),
   );
-  if (!selected.length) return { block: "", lessonIds: [] as string[] };
+  /**
+   * تعلّم متبادل بين الزملاء: ما تعلّمه موظف عن **أسلوب هذه العلامة وتفضيلات مالكها**
+   * ينفع بقية الفريق. نشارك دروس ملاحظات المالك فقط (owner_feedback) لأنها عن العلامة
+   * لا عن حرفة موظف بعينه؛ ودروس المراجعة الذاتية تبقى خاصة بصاحبها لأنها عن أخطائه هو.
+   * لا تُحتسب هذه الدروس في قياس A/B (lessonIds) حتى لا يُنسب أثرها لموظف لم يولّدها.
+   */
+  const { data: peers } = await client
+    .from("employee_lessons")
+    .select("instruction, employee_id, confidence")
+    .eq("workspace_id", workspaceId)
+    .neq("employee_id", employeeId)
+    .eq("source_kind", "owner_feedback")
+    .eq("status", "active")
+    .gte("confidence", 0.7)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order("confidence", { ascending: false })
+    .limit(3);
+
+  const peerBlock = (peers ?? []).length
+    ? [
+        "## ما تعلّمه زملاؤك عن هذه العلامة (طبّقه في حدود تخصصك أنت)",
+        "هذه تفضيلات أسلوب ثبتت مع موظف آخر في نفس المساحة. التزم بها في النبرة والصياغة، ولا تتجاوز بها حدود عملك ولا طلب المستخدم.",
+        ...(peers ?? []).map((lesson, index) => `${index + 1}) ${lesson.instruction}`),
+      ].join("\n")
+    : "";
+
+  if (!selected.length) return { block: peerBlock, lessonIds: [] as string[] };
   return {
     block: [
       "## دروس نشطة وتجارب منخفضة المخاطر لهذه العلامة",
       "طبّقها فقط عندما تلائم الطلب. لا تجعلها تتجاوز طلب المستخدم أو قواعد الأمان والصدق.",
       ...selected.map((lesson, index) => `${index + 1}) ${lesson.instruction}`),
+      ...(peerBlock ? ["", peerBlock] : []),
     ].join("\n"),
     lessonIds: selected.map((lesson) => lesson.id),
   };
 }
+
+/**
+ * إشارة ضمنية من داخل المحادثة (بلا مهمة ولا اعتماد): «أعاد المالك التوليد» أو
+ * «أخذ النص ليعدّله بنفسه». هذه أصدق تقييم متاح — لا تنتظر نموذجاً يحكم على نفسه.
+ *
+ * تُسجَّل كإشارة تُعلِّم نتيجة التشغيلة (outcome) فتدخل بوابة الأمان في دورة القياس،
+ * ولا تُحوَّل إلى نصّ درس: «أعد التوليد» ليست تعليمة يتعلّمها الموظف، بل دليل رسوب.
+ */
+export async function recordChatSignal(
+  client: Client,
+  input: {
+    workspaceId: string;
+    employeeId: string;
+    messageId: string;
+    kind: "edited" | "rejected";
+    originalText?: string | null;
+  },
+) {
+  const { data: run } = await client
+    .from("employee_runs")
+    .select("id")
+    .eq("workspace_id", input.workspaceId)
+    .eq("message_id", input.messageId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!run?.id) return { ok: false };
+  const { data: already } = await client
+    .from("employee_feedback")
+    .select("id")
+    .eq("run_id", run.id)
+    .eq("kind", input.kind)
+    .limit(1)
+    .maybeSingle();
+  if (already) return { ok: true };
+  await client.from("employee_feedback").insert({
+    workspace_id: input.workspaceId,
+    employee_id: input.employeeId,
+    run_id: run.id,
+    kind: input.kind,
+    reason: null,
+    original_text: input.originalText ? clean(input.originalText, 4000) : null,
+    weight: 2,
+  });
+  await client.from("employee_runs").update({ outcome: input.kind }).eq("id", run.id);
+  return { ok: true };
+}
+
 
 export async function recordEmployeeRun(
   client: Client,

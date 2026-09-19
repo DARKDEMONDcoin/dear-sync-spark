@@ -748,6 +748,14 @@ function ChatView({
 
   const ask = useServerFn(askEmployee);
   const runSkillFn = useServerFn(runSkill);
+  /** إشارة صامتة للتعلّم: «عدّل» أو «أعد التوليد» تقييمٌ حقيقي لا يحتاج سؤال المالك. */
+  const sendChatSignal = useServerFn(saveChatSignal);
+  const signal = (messageId: string, kind: "edited" | "rejected", originalText: string) => {
+    if (!workspace) return;
+    void sendChatSignal({
+      data: { workspaceId: workspace.id, employeeId: id, messageId, kind, originalText },
+    }).catch(() => undefined);
+  };
   const employeeSkills = skillsFor(id);
   const quickSkills = featuredSkillsFor(id).slice(0, 6);
   const employeeCopy: { prompts: string[]; greetings: string[] } =

@@ -1283,13 +1283,16 @@ function ChatView({
                                   // التعديل اليدوي لمنشور = نص المنشور فقط، بلا شرح الموظف.
                                   setDraft(looksPostable(body) ? extractPostText(body) : body);
                                   inputRef.current?.focus();
+                                  signal(m.id, "edited", m.body);
                                 }}
                                 onRegenerate={
                                   lastUserBefore(arr, idx)
-                                    ? () =>
-                                        submit(
+                                    ? () => {
+                                        signal(m.id, "rejected", m.body);
+                                        void submit(
                                           `${lastUserBefore(arr, idx)}\n\n(أعد صياغة الرد السابق بزاوية مختلفة وأقوى، وحافظ على نفس الطلب.)`,
-                                        )
+                                        );
+                                      }
                                     : null
                                 }
                               />

@@ -54,6 +54,7 @@ import {
   useWorkspace,
 } from "@/lib/data";
 import { askEmployee, runSkill } from "@/lib/ai.functions";
+import { saveChatSignal } from "@/lib/learning.functions";
 import { SkillPalette } from "@/components/app/SkillPalette";
 import { Thinking } from "@/components/app/Thinking";
 import { Markdown } from "@/components/app/Markdown";
